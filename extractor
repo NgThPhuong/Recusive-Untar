@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+# TODO: find a better way to avoid popd at the first iteration
+# current solution is just pushd "$PWD"
+# ==> not using dirstack ==> use conventional array
+first_iter=1
+curr_pos=0
+root_tar="$( realpath $PWD )"
+accumulated_dir=( "$root_tar" )
+echo $root_tar
+while true; do
+    found_arr=( $(find . -type f \( -name "*.tar*" -o -name "*.tgz" \) ! -path "*/Tars_excluded/*" ) )
+    echo "found_arr: \"${found_arr[@]}\""
+    curr_dir="${accumulated_dir[$curr_pos]}"
+    echo "CURR_DIR - $curr_pos: \"$curr_dir\""
+    # check if found_arr is empty
+    echo "size: ${#found_arr[@]}"
+    if (( ${#found_arr[@]} )); then
+        echo "unset - $curr_pos \"${accumulated_dir[$curr_pos]}\""
+        unset "accumulated_dir[$curr_pos]"
+        echo "accu_dirs: ${accumulated_dir[@]}"
+        (( --curr_pos ))
+        for i in "${found_arr[@]}"; do
+
+            # extract tar file to folder with suffix .DECRPS
+            target_dir="${curr_dir}/${i}.DECRPS"
+            echo "=> targetdir: \"$target_dir\""
+
+            if [[ ! -d "${target_dir}" ]]; then
+                mkdir -p "$target_dir"
+                echo "mkdir -p \"$target_dir\""
+                tar -xf "$i" -C "$target_dir"
+
+                echo "tar -xf \"$i\" -C \"$target_dir\""
+
+                accumulated_dir+=( "$target_dir" )
+                echo "=> accu_dirs: ${accumulated_dir[@]}"
+                (( ++curr_pos ))
+                echo "=> extracting: \"$i\""
+                excluded_dir="$( dirname $i )/Tars_excluded"
+
+                # move tar file to reversed folder to avoid duplicate handling
+                if [[ ! -d "$excluded_dir" ]]; then
+                    mkdir -p "$excluded_dir"
+                fi
+                mv "$i" "$excluded_dir"
+            fi
+        done
+        echo "cd \"${accumulated_dir[$curr_pos]}\""
+        cd "${accumulated_dir[$curr_pos]}"
+    else
+        echo "=> not found - POP"
+        unset "accumulated_dir[$curr_pos]"
+        if [[ $(( --curr_pos )) -lt 0 ]]; then break; fi
+        cd "${accumulated_dir[$curr_pos]}"
+    fi
+done
