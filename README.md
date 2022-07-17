@@ -1,2 +1,2 @@
 # Recusive-Untar
-Small script for recursively decompressing huge log folder which contains *.tar and *.tgz files
+Small script for recursively decompressing the huge log folder which contains *.tar and *.tgz files
